@@ -28,6 +28,7 @@ async def play_next(voice_client, channel):
     queue = get_queue(voice_client.guild.id)
     if len(queue) == 0:
         await channel.send('Queue is empty, nothing more to play.')
+        asyncio.ensure_future(leave_if_inactive(voice_client, channel)) #makes sure to leave channel after X time
         return
 
     url, title, user = queue.popleft()
@@ -37,6 +38,13 @@ async def play_next(voice_client, channel):
     ))
     await channel.send(f'{user} playing: {title}')
 
+async def leave_if_inactive(voice_client, channel):
+        await asyncio.sleep(600)  # 10 minutes
+        if voice_client.is_connected() and not voice_client.is_playing():
+            queues[voice_client.guild.id] = deque()
+            await voice_client.disconnect()
+            await channel.send('Left due to inactivity.')
+
 class Client(discord.Client):
     async def on_ready(self):
         print(f'Logged on as {self.user}!')
@@ -45,16 +53,12 @@ class Client(discord.Client):
         if message.author == self.user:
             return
 
+        # !help function ----------------------------------------------------------------------------------------------------------------
+
         if message.content.startswith('!help'):
             await message.channel.send(f'Here is how you use the bot {message.author.mention}!```!play <URL or file>\n!next / !skip\n!stop / !clear\n!queue / !list\n!leave```')
 
-        if message.content.startswith('!join'):
-            if message.author.voice is None:
-                await message.channel.send('You need to be in a voice channel first!')
-                return
-            channel = message.author.voice.channel
-            await channel.connect()
-            await message.channel.send(f'Joined {channel.name}!')
+        # !list function ----------------------------------------------------------------------------------------------------------------
 
         if message.content.startswith('!queue') or message.content.startswith('!list'):
             queue = get_queue(message.guild.id)
@@ -68,6 +72,8 @@ class Client(discord.Client):
                 pretty_queue += f'{counter}: {items[1]} - queued by {items[2]}\n'
             pretty_queue += "```"
             await message.channel.send(pretty_queue)
+
+        # !play function ----------------------------------------------------------------------------------------------------------------
 
         if message.content.startswith('!play'):
             parts = message.content.split(' ', 1)
@@ -104,6 +110,8 @@ class Client(discord.Client):
                 queue.append((stream_url, title, message.author))
                 await play_next(voice_client, message.channel)
 
+        # !skip function ----------------------------------------------------------------------------------------------------------------
+
         if message.content.startswith('!next') or message.content.startswith('!skip'):
             voice_client = message.guild.voice_client
             if voice_client and voice_client.is_playing():
@@ -111,6 +119,8 @@ class Client(discord.Client):
                 await message.channel.send('Skipping...')
             else:
                 await message.channel.send(f'{message.author.mention} are you dumb? Nothing is playing???') #Nothing is playing
+
+        # !clear function ----------------------------------------------------------------------------------------------------------------
 
         if message.content.startswith('!stop') or message.content.startswith('!clear'):
             voice_client = message.guild.voice_client
@@ -121,6 +131,8 @@ class Client(discord.Client):
             else:
                 await message.channel.send(f'{message.author.mention} are you dumb? Nothing is playing???') #Nothing is playing
 
+        # !leave function ----------------------------------------------------------------------------------------------------------------
+
         if message.content.startswith('!leave'):
             voice_client = message.guild.voice_client
             if voice_client:
@@ -129,6 +141,7 @@ class Client(discord.Client):
                 await message.channel.send('gn chat') # Goodbye message
             else:
                 await message.channel.send("I'm not in a voice channel.")
+
 
 intents = discord.Intents.default()
 intents.message_content = True
