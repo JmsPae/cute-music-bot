@@ -88,9 +88,12 @@ class Client(discord.Client):
             # Fetch stream info
             await message.channel.send('Fetching audio...')
             with yt_dlp.YoutubeDL(YTDL_OPTIONS) as ydl:
-                info = ydl.extract_info(url, download=False)
-                stream_url = info['url']
-                title = info['title']
+                try:
+                    info = ydl.extract_info(url, download=False)
+                    stream_url = info['url']
+                    title = info['title']
+                except:
+                    await message.channel.send('URL/File not supported')
 
             queue = get_queue(message.guild.id)
 
