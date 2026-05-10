@@ -4,6 +4,7 @@ import discord
 import yt_dlp
 import asyncio
 from collections import deque
+import subprocess
 
 load_dotenv()
 
@@ -45,9 +46,32 @@ async def leave_if_inactive(voice_client, channel):
             await voice_client.disconnect()
             await channel.send('Left due to inactivity.')
 
+async def onepiece():
+    current = "nothing"
+
+    while True:
+        result = subprocess.run(['curl', 'https://tcbonepiecechapters.com/mangas/5/one-piece', '--silent'], stdout=subprocess.PIPE)
+        out = result.stdout.decode('utf-8')
+
+        position = out.find("one-piece-chapter")
+        chapter = f'{out[position-15:position+22]}'
+
+        if current == chapter:
+            None
+        elif current == "nothing":
+            current = chapter
+        else:
+            current = chapter
+            #send pog message
+            #print(f'NEW CHAPTER https://tcbonepiecechapters.com/mangas/5/one-piece{current}')
+            channel = discord.utils.get(client.get_all_channels(), guild__name='ɃΘNK', name='onepiece')
+            await channel.send(f'@everyone [NEW CHAPTER {out[position+18:position+22]} JUST DROPPED](<https://tcbonepiecechapters.com{current}>)')
+        await asyncio.sleep(60*60)
+
 class Client(discord.Client):
     async def on_ready(self):
         print(f'Logged on as {self.user}!')
+        asyncio.ensure_future(onepiece())
 
     async def on_message(self, message):
         if message.author == self.user:
@@ -56,7 +80,7 @@ class Client(discord.Client):
         # !help function ----------------------------------------------------------------------------------------------------------------
 
         if message.content.startswith('!help'):
-            await message.channel.send(f'Here is how you use the bot {message.author.mention}!```!play <URL or file>\n!next / !skip\n!stop / !clear\n!queue / !list\n!leave```')
+            await message.channel.send(f'Here is how you use the bot {message.author.mention}!```!play <URL>\n!next / !skip\n!stop / !clear\n!queue / !list\n!leave```')
 
         # !list function ----------------------------------------------------------------------------------------------------------------
 
@@ -100,6 +124,9 @@ class Client(discord.Client):
                     title = info['title']
                 except:
                     await message.channel.send('URL/File not supported...')
+                    if voice_client and not voice_client.is_playing():
+                        asyncio.ensure_future(leave_if_inactive(voice_client, message.channel))
+                    return
 
             queue = get_queue(message.guild.id)
 
