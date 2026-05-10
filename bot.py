@@ -93,7 +93,7 @@ class Client(discord.Client):
                     stream_url = info['url']
                     title = info['title']
                 except:
-                    await message.channel.send('URL/File not supported')
+                    await message.channel.send('URL/File not supported...')
 
             queue = get_queue(message.guild.id)
 
